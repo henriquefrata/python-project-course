@@ -12,6 +12,10 @@ desses mesmos dados — assim a API fica pequena e fácil de entender de uma
 vez só, e a lógica de apresentação (como comparar, o que mostrar) fica no
 lugar que efetivamente decide o que exibir.
 """
+import pandas as pd
+
+from clima_pipeline.api.schemas import CidadeOut, ClimaDiarioOut, HealthOut, ResumoOut
+from clima_pipeline.transform import calcular_resumo
 
 import datetime as dt
 from contextlib import asynccontextmanager
@@ -69,6 +73,14 @@ def _resolver_ou_404(identificador: str) -> str:
         )
     return slug
 
+def _filtrar_periodo(df: pd.DataFrame, inicio: dt.date | None, fim: dt.date | None) -> pd.DataFrame:
+    """Mantém só as linhas entre `inicio` e `fim` (os dois são opcionais)."""
+    df["data"] = df["data"].dt.date  # converte data+hora em só data, para comparar com inicio/fim
+    if inicio:
+        df = df[df["data"] >= inicio]
+    if fim:
+        df = df[df["data"] <= fim]
+    return df
 
 @app.get("/", include_in_schema=False)
 def raiz() -> RedirectResponse:
@@ -112,13 +124,31 @@ def clima_diario(
 
     # inicio/fim são opcionais (Query(None, ...)) — só filtra se o cliente
     # da API de fato informou o parâmetro.
-    df["data"] = df["data"].dt.date
-    if inicio:
-        df = df[df["data"] >= inicio]
-    if fim:
-        df = df[df["data"] <= fim]
+    df = _filtrar_periodo(df, inicio, fim)
 
     # **row desempacota o dict da linha como argumentos nomeados do
     # construtor do Pydantic — dict {"cidade": "sp", "temp_media": 24.1, ...}
     # vira ClimaDiarioOut(cidade="sp", temp_media=24.1, ...).
     return [ClimaDiarioOut(**row) for row in df.to_dict(orient="records")]
+
+
+@app.get("/clima/resumo", response_model=ResumoOut)
+def clima_resumo(
+    cidade: str = Query(..., description="Slug, nome de exibição ou UF da cidade"),
+    inicio: dt.date | None = Query(None, description="Data inicial (YYYY-MM-DD)"),
+    fim: dt.date | None = Query(None, description="Data final (YYYY-MM-DD)"),
+) -> ResumoOut:
+    """Devolve o resumo do período (dia mais quente, total de chuva, etc.) de uma cidade."""
+    slug = _resolver_ou_404(cidade)
+    df = get_repository().get_daily(city=slug)
+
+    if df.empty:
+        raise HTTPException(status_code=404, detail="Sem dados para o período informado.")
+
+    df = _filtrar_periodo(df, inicio, fim)
+
+    if df.empty:
+        raise HTTPException(status_code=404, detail="Sem dados para o período informado.")
+
+    resumo = calcular_resumo(df)
+    return ResumoOut(**resumo)

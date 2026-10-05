@@ -63,6 +63,8 @@ class ClimaAggregator:
                 umidade_media=("umidade_pct", "mean"),
                 precipitacao_total=("precipitacao_mm", "sum"),
                 vento_medio=("vento_kmh", "mean"),
+                sensacao_media=("sensacao_c", "mean"),  
+                sensacao_max=("sensacao_c", "max"),
             )
             .reset_index()  # tira cidade/data do índice e volta a serem colunas normais
             .rename(columns={"datetime": "data"})
@@ -115,12 +117,15 @@ if __name__ == "__main__":
     df_horario_mock = pd.DataFrame({
         "cidade": ["sao_paulo"] * 4,
         "datetime": pd.to_datetime([
-            "2025-01-01 00:00", "2025-01-01 12:00",
-            "2025-01-02 00:00", "2025-01-02 12:00",
+            "2025-01-01 00:00",
+            "2025-01-01 12:00",
+            "2025-01-02 00:00",
+            "2025-01-02 12:00",
         ]),
         "temp_c": [20.0, 26.0, 21.0, 30.0],
         "umidade_pct": [70.0, 60.0, 75.0, 55.0],
         "precipitacao_mm": [0.0, 2.5, 0.0, 0.0],
         "vento_kmh": [5.0, 12.0, 8.0, 15.0],
+        "sensacao_c": [21.0, 28.0, 22.0, 33.0],  
     })
     print(ClimaAggregator().build_daily_view(df_horario_mock))

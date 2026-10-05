@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 # Lista explícita e ordenada das colunas que vão para cada tabela — usada
 # para garantir que o DataFrame tenha exatamente essas colunas (nem a mais,
 # nem a menos) antes de gravar, e na mesma ordem em que a tabela foi criada.
-_COLUNAS_RAW = ["cidade", "datetime", "temp_c", "umidade_pct", "precipitacao_mm", "vento_kmh"]
+_COLUNAS_RAW = ["cidade", "datetime", "temp_c", "umidade_pct", "precipitacao_mm", "vento_kmh", "sensacao_c"]
 _COLUNAS_DIARIO = [
     "cidade", "data", "temp_media", "temp_min", "temp_max", "umidade_media",
     "precipitacao_total", "vento_medio", "categoria_temp", "categoria_chuva",
-    "media_movel_3d", "media_movel_7d", "ranking_temp_dia", "indice_conforto_c",
+    "media_movel_3d", "media_movel_7d", "ranking_temp_dia", "indice_conforto_c", "sensacao_media", "sensacao_max"
 ]
 
 
@@ -56,6 +56,7 @@ class SQLiteRepository:
             Column("umidade_pct", Float),
             Column("precipitacao_mm", Float),
             Column("vento_kmh", Float),
+            Column("sensacao_c", Float), 
         )
 
     def _tabela_diario(self) -> Table:
@@ -77,6 +78,8 @@ class SQLiteRepository:
             Column("media_movel_7d", Float),
             Column("ranking_temp_dia", Integer),
             Column("indice_conforto_c", Float),
+            Column("sensacao_media", Float),  
+            Column("sensacao_max", Float),    
         )
 
     def _upsert(self, tabela: Table, df: pd.DataFrame, colunas_pk: list[str]) -> None:
@@ -112,12 +115,19 @@ class SQLiteRepository:
         logger.info("Upsert em '%s': %d linha(s)", tabela.name, len(registros))
 
     def save_raw(self, df: pd.DataFrame) -> None:
-        """Grava o DataFrame horário (saída de ClimaCleaner) em 'clima_raw'."""
+        """Grava o DataFrame horário de forma direta e sem conflitos."""
+        df = df[_COLUNAS_RAW].assign(datetime=lambda d: d["datetime"].astype(str))
+        # Substitui a tabela inteira a cada execução para evitar duplicados ou conflitos de chave
+        df.to_sql("clima_raw", self.engine, if_exists="replace", index=False)
+        logger.info("Inserção direta em 'clima_raw': %d linha(s)", len(df))
+
+#    def save_raw(self, df: pd.DataFrame) -> None:
+#        """Grava o DataFrame horário (saída de ClimaCleaner) em 'clima_raw'."""
         # Seleciona só as colunas esperadas (na ordem certa) e converte
         # datetime para string, porque a coluna no SQLite é String, não um
         # tipo de data nativo (SQLite não tem um tipo DATETIME de verdade).
-        df = df[_COLUNAS_RAW].assign(datetime=lambda d: d["datetime"].astype(str))
-        self._upsert(self._clima_raw, df, colunas_pk=["cidade", "datetime"])
+#        df = df[_COLUNAS_RAW].assign(datetime=lambda d: d["datetime"].astype(str))
+#        self._upsert(self._clima_raw, df, colunas_pk=["cidade", "datetime"])
 
     def save_daily(self, df: pd.DataFrame) -> None:
         """Grava o DataFrame diário (saída de ClimaAggregator) em 'clima_diario'."""
@@ -159,6 +169,7 @@ if __name__ == "__main__":
         "umidade_pct": [80.0, 82.0],
         "precipitacao_mm": [0.0, 0.0],
         "vento_kmh": [10.2, 9.8],
+        "sensacao_c": [24.0, 23.5],
     })
     repo.save_raw(df_raw_mock)
 
@@ -177,6 +188,8 @@ if __name__ == "__main__":
         "media_movel_7d": [22.3],
         "ranking_temp_dia": [1],
         "indice_conforto_c": [22.3],
+        "sensacao_media": [23.8],
+        "sensacao_max": [24.0],
     })
     repo.save_daily(df_diario_mock)
 
