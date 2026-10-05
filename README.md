@@ -1,4 +1,9 @@
-# Clima Pipeline
+## Clima Pipeline
+ 
+### Integrantes do grupo
+ 
+- Rafaela Carvalho dos Santos - RA: 2102110
+- Jackeline Roseno dos Santos - RA: 2603099
 
 Pipeline de dados climáticos: Open-Meteo → tratamento (pandas) → agregações →
 SQLite → REST API (FastAPI) → dashboard (Streamlit).
