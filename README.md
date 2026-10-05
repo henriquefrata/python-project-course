@@ -4,6 +4,7 @@
  
 - Rafaela Carvalho dos Santos - RA: 2102110
 - Jackeline Roseno dos Santos - RA: 2603099
+- Henrique Mamprin Frata      - RA: 2600507
 
 Pipeline de dados climáticos: Open-Meteo → tratamento (pandas) → agregações →
 SQLite → REST API (FastAPI) → dashboard (Streamlit).
