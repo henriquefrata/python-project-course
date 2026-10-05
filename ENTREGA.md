@@ -41,7 +41,7 @@
 ![Teste diario funcionando](prints/Imagem16.png)
 
 ## - [x] As linhas que filtram por data aparecem **uma vez só** no código, dentro de `_filtrar_periodo`.
-![Codigo refatorado](prints/Imagen17.png)
+![Codigo refatorado](prints/Imagem17.png)
 
 ## - [x] O dashboard mostra os cartões de resumo de cada cidade selecionada.
 ![Dashboard Cartoes](prints/Imagem18.png)
